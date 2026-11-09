@@ -10,12 +10,14 @@ Objetivo:
   para o rastreamento epidemiológico de diabetes, tratando de forma estrita
   o severo desbalanceamento de classes através de:
     - Amostragem estratificada (stratify=y)
-    - Ponderação de classes nas funções de custo (class_weight='balanced')
+    - Ponderação de classes ou das amostras de treino
     - Métricas especializadas para classes raras (Balanced Accuracy, F1 Macro, Matriz de Confusão)
 
 Modelos Implementados:
-  1. RandomForestClassifier (Modelo Ensemble Não-Linear + Feature Importance)
-  2. LogisticRegression (Modelo Linear Paramétrico + Pipeline com StandardScaler)
+  1. DecisionTreeClassifier
+  2. RandomForestClassifier
+  3. AdaBoostClassifier
+  Opcional: LogisticRegression com StandardScaler
 =============================================================================
 """
 
@@ -32,7 +34,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.metrics import (
     classification_report,
     confusion_matrix,
@@ -156,6 +160,40 @@ def dividir_dados(
     return X_train, X_test, y_train, y_test
 
 
+def treinar_arvore_decisao(
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    seed: int = 42
+) -> Tuple[DecisionTreeClassifier, float]:
+    """Treina uma árvore CART com profundidade limitada e pesos por classe."""
+    print("-> Treinando DecisionTreeClassifier...")
+    t0 = time.time()
+    arvore = DecisionTreeClassifier(
+        max_depth=12,
+        min_samples_split=20,
+        min_samples_leaf=10,
+        class_weight="balanced",
+        random_state=seed
+    )
+    arvore.fit(X_train, y_train)
+    return arvore, time.time() - t0
+
+
+def treinar_adaboost(
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    seed: int = 42
+) -> Tuple[AdaBoostClassifier, float]:
+    """Treina stumps em sequência com pesos iniciais balanceados por classe."""
+    print("-> Treinando AdaBoostClassifier...")
+    t0 = time.time()
+    # O estimador padrão do AdaBoost é uma árvore de profundidade 1.
+    ada = AdaBoostClassifier(n_estimators=50, learning_rate=1.0, random_state=seed)
+    pesos = compute_sample_weight(class_weight="balanced", y=y_train)
+    ada.fit(X_train, y_train, sample_weight=pesos)
+    return ada, time.time() - t0
+
+
 def treinar_random_forest(
     X_train: pd.DataFrame,
     y_train: pd.Series,
@@ -173,7 +211,7 @@ def treinar_random_forest(
         Tuple[RandomForestClassifier, float]: Modelo treinado e tempo de treino em segundos.
     """
     print("-" * 80)
-    print("-> Treinando Modelo 1: RandomForestClassifier (class_weight='balanced')...")
+    print("-> Treinando RandomForestClassifier (class_weight='balanced')...")
     t0 = time.time()
 
     rf = RandomForestClassifier(
@@ -209,7 +247,7 @@ def treinar_regressao_logistica(
         Tuple[Pipeline, float]: Pipeline treinado e tempo de treino em segundos.
     """
     print("-" * 80)
-    print("-> Treinando Modelo 2: LogisticRegression com StandardScaler (class_weight='balanced')...")
+    print("-> Treinando LogisticRegression com StandardScaler (class_weight='balanced')...")
     t0 = time.time()
 
     pipeline = Pipeline([
@@ -281,7 +319,7 @@ def avaliar_modelo(
     macro_f1 = f1_score(y_test, y_pred, average="macro")
     weighted_f1 = f1_score(y_test, y_pred, average="weighted")
     macro_recall = recall_score(y_test, y_pred, average="macro")
-    macro_prec = precision_score(y_test, y_pred, average="macro")
+    macro_prec = precision_score(y_test, y_pred, average="macro", zero_division=0)
 
     print("\n" + "=" * 80)
     print(f"AVALIAÇÃO DO MODELO: {nome_modelo.upper()}")
@@ -301,7 +339,8 @@ def avaliar_modelo(
         y_test, y_pred,
         target_names=NOMES_CLASSES,
         output_dict=True,
-        digits=4
+        digits=4,
+        zero_division=0
     )
     report_df = pd.DataFrame(report_dict).T
     print(report_df.to_string())
@@ -369,9 +408,10 @@ def parse_args():
     parser.add_argument(
         "--modelo",
         type=str,
-        choices=["rf", "lr", "ambos"],
-        default="ambos",
-        help="Modelo a ser treinado: 'rf' (Random Forest), 'lr' (Logistic Regression), ou 'ambos' (default: ambos)"
+        choices=["dt", "rf", "ada", "obrigatorios", "lr", "ambos"],
+        default="obrigatorios",
+        help="dt: Decision Tree, rf: Random Forest, ada: AdaBoost, "
+             "obrigatorios: os três (padrão), lr: regressão logística, ambos: rf e lr"
     )
     parser.add_argument(
         "--test-size",
@@ -406,28 +446,18 @@ def main():
         seed=args.seed
     )
 
+    modelos = {
+        "dt": ("Decision Tree Classifier", treinar_arvore_decisao),
+        "rf": ("Random Forest Classifier", treinar_random_forest),
+        "ada": ("AdaBoost Classifier", treinar_adaboost),
+        "lr": ("Logistic Regression", treinar_regressao_logistica),
+    }
+    grupos = {"obrigatorios": ["dt", "rf", "ada"], "ambos": ["rf", "lr"]}
     resultados = []
-
-    # 3 e 4. Treinamento e Avaliação
-    if args.modelo in ["rf", "ambos"]:
-        rf_model, rf_tempo = treinar_random_forest(X_train, y_train, seed=args.seed)
-        res_rf = avaliar_modelo(
-            rf_model, X_test, y_test,
-            nome_modelo="Random Forest Classifier",
-            tempo_treino=rf_tempo,
-            features=features
-        )
-        resultados.append(res_rf)
-
-    if args.modelo in ["lr", "ambos"]:
-        lr_model, lr_tempo = treinar_regressao_logistica(X_train, y_train, seed=args.seed)
-        res_lr = avaliar_modelo(
-            lr_model, X_test, y_test,
-            nome_modelo="Logistic Regression",
-            tempo_treino=lr_tempo,
-            features=features
-        )
-        resultados.append(res_lr)
+    for chave in grupos.get(args.modelo, [args.modelo]):
+        nome, treinar = modelos[chave]
+        modelo, tempo = treinar(X_train, y_train, seed=args.seed)
+        resultados.append(avaliar_modelo(modelo, X_test, y_test, nome, tempo, features))
 
     # 5. Quadro Comparativo Consolidado
     if len(resultados) > 1:
