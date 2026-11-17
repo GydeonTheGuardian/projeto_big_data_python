@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador acadêmico de diabetes</title>
+<link rel="stylesheet" href="estilo.css">
+<script defer src="modelo.js"></script>
+<script defer src="modelos_comparacao.js"></script>
+<script defer src="predicao.js"></script>
+<script defer src="formulario.js"></script>
+</head>
+<body>
+<nav class="barra" aria-label="Projeto"><span>Tópicos em Big Data</span><a href="../desempenho_modelos.html">Desempenho dos modelos <span aria-hidden="true">↗</span></a></nav>
+<main>
+<header class="hero"><h1>Simulador de classificação de diabetes</h1><p>Preencha o perfil para explorar a previsão do AdaBoost, treinado com dados da pesquisa BRFSS dos Estados Unidos.</p></header>
+<aside class="aviso"><strong>Demonstração acadêmica</strong><p>A previsão não é um diagnóstico. Use um perfil fictício se preferir. As respostas ficam no navegador durante o preenchimento e não são enviadas.</p></aside>
+<form id="perfil" autocomplete="off">
+<div id="perguntas"></div>
+<div class="acoes"><button type="reset">Limpar</button><button type="submit">Ver previsão <span aria-hidden="true">→</span></button></div>
+</form>
+<section id="resultado" aria-live="polite" tabindex="-1" hidden>
+<div class="resultado-topo">
+<p>Classe prevista pelo AdaBoost</p>
+<button type="button" id="comparar" aria-controls="comparacao" aria-expanded="false">Ver outros modelos</button>
+</div>
+<h2 id="classe"></h2>
+<p>No teste do projeto, o modelo identificou 147 dos 1.341 registros com pré-diabetes. A previsão individual pode estar incorreta.</p>
+<div id="comparacao" hidden>
+<h3>Previsões com as mesmas respostas</h3>
+<dl class="previsoes">
+<div><dt>Decision Tree</dt><dd id="classe-arvore"></dd></div>
+<div><dt>Random Forest</dt><dd id="classe-floresta"></dd></div>
+</dl>
+</div>
+</section>
+</main></body></html>
