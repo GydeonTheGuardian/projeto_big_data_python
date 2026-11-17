@@ -10,7 +10,8 @@ Objetivo:
   para o rastreamento epidemiológico de diabetes, tratando de forma estrita
   o severo desbalanceamento de classes através de:
     - Amostragem estratificada (stratify=y)
-    - Ponderação de classes ou das amostras de treino
+    - Oversampling no treino de cada fold na busca dos modelos obrigatórios
+    - Ponderação na execução de referência com --sem-grid-search
     - Métricas especializadas para classes raras (Balanced Accuracy, F1 Macro, Matriz de Confusão)
 
 Modelos Implementados:
@@ -30,7 +31,7 @@ from typing import Tuple, List, Dict, Any
 import pandas as pd
 import numpy as np
 
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
@@ -77,7 +78,7 @@ def carregar_dados(caminho_csv: Path) -> Tuple[pd.DataFrame, pd.Series, List[str
 
     Returns:
         Tuple[pd.DataFrame, pd.Series, List[str]]:
-            - X: DataFrame com as 13 variáveis preditoras
+            - X: DataFrame com as variáveis preditoras disponíveis no CSV tratado
             - y: Series com o alvo multiclasse (0, 1, 2)
             - features: Lista com os nomes dos atributos
     """
@@ -229,6 +230,59 @@ def treinar_random_forest(
     return rf, tempo
 
 
+def metade_da_classe_majoritaria(y: np.ndarray) -> Dict[int, int]:
+    """Eleva as classes abaixo da metade da frequência majoritária."""
+    contagens = pd.Series(y).value_counts()
+    minimo = int(contagens.max()) // 2
+    return {classe: minimo for classe, quantidade in contagens.items() if quantidade < minimo}
+
+
+def otimizar_modelo(chave, X_train, y_train, seed):
+    """Seleciona por F1 macro e retreina no conjunto completo de treino."""
+    from imblearn.over_sampling import RandomOverSampler
+    from imblearn.pipeline import Pipeline as PipelineReamostragem
+
+    grades = {
+        "dt": (
+            DecisionTreeClassifier(random_state=seed, min_samples_split=20),
+            {"max_depth": [4, 6, 12], "criterion": ["gini", "entropy"],
+             "min_samples_leaf": [10, 50]},
+        ),
+        "rf": (
+            RandomForestClassifier(random_state=seed, min_samples_split=20, n_jobs=-1),
+            {"n_estimators": [100, 150], "max_depth": [8, 12, 18],
+             "min_samples_leaf": [10, 30]},
+        ),
+        "ada": (
+            AdaBoostClassifier(random_state=seed),
+            {"n_estimators": [50, 100, 150], "learning_rate": [0.5, 1.0]},
+        ),
+    }
+    estimador, grade = grades[chave]
+    pipeline = PipelineReamostragem([
+        ("oversampling", RandomOverSampler(
+            sampling_strategy=metade_da_classe_majoritaria, random_state=seed
+        )),
+        ("modelo", estimador),
+    ])
+    busca = GridSearchCV(
+        pipeline,
+        {f"modelo__{parametro}": valores for parametro, valores in grade.items()},
+        scoring="f1_macro",
+        cv=StratifiedKFold(n_splits=3, shuffle=True, random_state=seed),
+        refit=True,
+        error_score="raise",
+    )
+    print(f"-> Grid Search ({chave}): 3 folds estratificados, F1 macro, oversampling de 50%.")
+    inicio = time.perf_counter()
+    busca.fit(X_train, y_train)
+    tempo = time.perf_counter() - inicio
+    print(f"   Melhores hiperparâmetros: {busca.best_params_}")
+    print(f"   F1 macro médio na validação: {busca.best_score_:.6f}")
+    print(f"   Tempo de busca e retreino: {tempo:.2f} s")
+    return busca.best_estimator_.named_steps["modelo"], busca.refit_time_
+
+
 def treinar_regressao_logistica(
     X_train: pd.DataFrame,
     y_train: pd.Series,
@@ -353,7 +407,7 @@ def avaliar_modelo(
 
     # 3. Importância de Features (se aplicável ao modelo)
     if hasattr(modelo, "feature_importances_"):
-        print("\n3. IMPORTÂNCIA DAS VARIÁVEIS PREDITORAS (Feature Importances - Gini Impurity):")
+        print("\n3. IMPORTÂNCIA DAS VARIÁVEIS PREDITORAS (redução de impureza):")
         fi_series = pd.Series(modelo.feature_importances_, index=features).sort_values(ascending=False)
         fi_df = pd.DataFrame({
             "Atributo": fi_series.index,
@@ -414,6 +468,11 @@ def parse_args():
              "obrigatorios: os três (padrão), lr: regressão logística, ambos: rf e lr"
     )
     parser.add_argument(
+        "--sem-grid-search",
+        action="store_true",
+        help="Executa os modelos com a configuração de referência e ponderação de classes."
+    )
+    parser.add_argument(
         "--test-size",
         type=float,
         default=0.20,
@@ -456,7 +515,10 @@ def main():
     resultados = []
     for chave in grupos.get(args.modelo, [args.modelo]):
         nome, treinar = modelos[chave]
-        modelo, tempo = treinar(X_train, y_train, seed=args.seed)
+        if args.sem_grid_search or chave == "lr" or args.modelo == "ambos":
+            modelo, tempo = treinar(X_train, y_train, seed=args.seed)
+        else:
+            modelo, tempo = otimizar_modelo(chave, X_train, y_train, args.seed)
         resultados.append(avaliar_modelo(modelo, X_test, y_test, nome, tempo, features))
 
     # 5. Quadro Comparativo Consolidado

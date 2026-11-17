@@ -1,0 +1,209 @@
+
+################################################################################
+   INÍCIO DO PIPELINE DE MODELAGEM PREDITIVA MULTICLASSE - BIG DATA
+################################################################################
+
+================================================================================
+1. CARREGAMENTO DOS DADOS TRATADOS
+================================================================================
+-> Localizando arquivo: C:\Users\luanm\Desktop\Diin\projeto_big_data\data\dados_tratados_multiclasse.csv
+-> Base carregada com sucesso: 266,972 instâncias x 20 colunas.
+• Total de variáveis preditoras (features): 18
+• Atributos selecionados: HighBP, HighChol, BMI, GenHlth, HeartDiseaseorAttack, Stroke, DiffWalk, PhysActivity, Smoker, Sex, Age, Education, Income, MentHlth, PhysHlth, HasHealthcare, NoDocbcCost, CholCheck
+
+================================================================================
+2. DIVISÃO ESTRATIFICADA DE TREINO E TESTE (stratify=y)
+================================================================================
+• Proporção da divisão: 80% Treino (213,577 registros) | 20% Teste (53,395 registros)
+• Semente de aleatoriedade: 42
+
+• Auditoria da Estratificação por Conjunto:
+       Classe Treino (Qtd) Treino (%) Teste (Qtd) Teste (%)
+Não Diabético      175,517     82.18%      43,880    82.18%
+Pré-diabético        5,362      2.51%       1,341     2.51%
+    Diabético       32,698     15.31%       8,174    15.31%
+
+-> Grid Search (dt): 3 folds estratificados, F1 macro, oversampling de 50%.
+   Melhores hiperparâmetros: {'modelo__criterion': 'entropy', 'modelo__max_depth': 6, 'modelo__min_samples_leaf': 10}
+   F1 macro médio na validação: 0.440390
+
+================================================================================
+AVALIAÇÃO DO MODELO: DECISION TREE CLASSIFIER
+================================================================================
+• Tempo de treinamento: 25.38 s
+• Acurácia Pura (Global):       73.17%  (Métrica enganosa sob desbalanceamento)
+• Acurácia Balanceada:          47.37%  (Média do Recall de cada classe)
+• Macro F1-Score:               0.4448   (Média harmônica não-ponderada)
+• Weighted F1-Score:            0.7570
+• Macro Recall (Sensibilidade): 47.37%
+• Macro Precision:              43.53%
+--------------------------------------------------------------------------------
+
+1. RELATÓRIO DE CLASSIFICAÇÃO DETALHADO POR CLASSE (Classification Report):
+               precision  recall  f1-score     support
+Não Diabético     0.8974  0.7896    0.8400 43,880.0000
+Pré-diabético     0.0520  0.1081    0.0702  1,341.0000
+Diabético         0.3566  0.5234    0.4242  8,174.0000
+accuracy          0.7317  0.7317    0.7317      0.7317
+macro avg         0.4353  0.4737    0.4448 53,395.0000
+weighted avg      0.7933  0.7317    0.7570 53,395.0000
+--------------------------------------------------------------------------------
+
+2. MATRIZ DE CONFUSÃO (Contagens e Recall Normalizado por Linha):
+-------------------------------------------------------------------------------
+Classe Real     | Pred: Não Diab | Pred: Pré-diab | Pred: Diabétic | Total Real
+-------------------------------------------------------------------------------
+Não Diabético   | 34,647 (79.0%) |  1,993 ( 4.5%) |  7,240 (16.5%) |   43,880
+Pré-diabético   |    717 (53.5%) |    145 (10.8%) |    479 (35.7%) |    1,341
+Diabético       |  3,246 (39.7%) |    650 ( 8.0%) |  4,278 (52.3%) |    8,174
+-------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+3. IMPORTÂNCIA DAS VARIÁVEIS PREDITORAS (redução de impureza):
+            Atributo  Importância Relativa (%)  Impacto Cumulativo (%)
+              HighBP                   37.8400                 37.8400
+             GenHlth                   27.0900                 64.9200
+                 BMI                   11.7400                 76.6600
+                 Age                   11.2800                 87.9400
+            HighChol                    9.3100                 97.2600
+              Income                    0.9800                 98.2400
+                 Sex                    0.6700                 98.9100
+           Education                    0.3600                 99.2600
+        PhysActivity                    0.2200                 99.4800
+            PhysHlth                    0.1500                 99.6300
+HeartDiseaseorAttack                    0.1400                 99.7700
+              Stroke                    0.1300                 99.9000
+            DiffWalk                    0.1000                100.0000
+              Smoker                    0.0000                100.0000
+            MentHlth                    0.0000                100.0000
+       HasHealthcare                    0.0000                100.0000
+         NoDocbcCost                    0.0000                100.0000
+           CholCheck                    0.0000                100.0000
+--------------------------------------------------------------------------------
+-> Grid Search (rf): 3 folds estratificados, F1 macro, oversampling de 50%.
+   Melhores hiperparâmetros: {'modelo__max_depth': 18, 'modelo__min_samples_leaf': 30, 'modelo__n_estimators': 100}
+   F1 macro médio na validação: 0.454161
+
+================================================================================
+AVALIAÇÃO DO MODELO: RANDOM FOREST CLASSIFIER
+================================================================================
+• Tempo de treinamento: 197.52 s
+• Acurácia Pura (Global):       77.67%  (Métrica enganosa sob desbalanceamento)
+• Acurácia Balanceada:          46.66%  (Média do Recall de cada classe)
+• Macro F1-Score:               0.4563   (Média harmônica não-ponderada)
+• Weighted F1-Score:            0.7843
+• Macro Recall (Sensibilidade): 46.66%
+• Macro Precision:              44.91%
+--------------------------------------------------------------------------------
+
+1. RELATÓRIO DE CLASSIFICAÇÃO DETALHADO POR CLASSE (Classification Report):
+               precision  recall  f1-score     support
+Não Diabético     0.8899  0.8526    0.8708 43,880.0000
+Pré-diabético     0.0584  0.0604    0.0594  1,341.0000
+Diabético         0.3991  0.4868    0.4386  8,174.0000
+accuracy          0.7767  0.7767    0.7767      0.7767
+macro avg         0.4491  0.4666    0.4563 53,395.0000
+weighted avg      0.7939  0.7767    0.7843 53,395.0000
+--------------------------------------------------------------------------------
+
+2. MATRIZ DE CONFUSÃO (Contagens e Recall Normalizado por Linha):
+-------------------------------------------------------------------------------
+Classe Real     | Pred: Não Diab | Pred: Pré-diab | Pred: Diabétic | Total Real
+-------------------------------------------------------------------------------
+Não Diabético   | 37,410 (85.3%) |    899 ( 2.0%) |  5,571 (12.7%) |   43,880
+Pré-diabético   |    841 (62.7%) |     81 ( 6.0%) |    419 (31.2%) |    1,341
+Diabético       |  3,787 (46.3%) |    408 ( 5.0%) |  3,979 (48.7%) |    8,174
+-------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+3. IMPORTÂNCIA DAS VARIÁVEIS PREDITORAS (redução de impureza):
+            Atributo  Importância Relativa (%)  Impacto Cumulativo (%)
+                 BMI                   21.2300                 21.2300
+             GenHlth                   13.2600                 34.4900
+                 Age                   12.4000                 46.8900
+              HighBP                   10.7600                 57.6500
+            HighChol                    6.6800                 64.3300
+              Income                    6.0900                 70.4200
+            PhysHlth                    5.9900                 76.4000
+            MentHlth                    5.5400                 81.9400
+           Education                    4.0400                 85.9800
+            DiffWalk                    3.1700                 89.1500
+        PhysActivity                    2.3300                 91.4800
+                 Sex                    2.2500                 93.7300
+              Smoker                    2.1600                 95.9000
+HeartDiseaseorAttack                    1.6700                 97.5600
+         NoDocbcCost                    0.8900                 98.4500
+              Stroke                    0.6300                 99.0800
+           CholCheck                    0.5300                 99.6000
+       HasHealthcare                    0.4000                100.0000
+--------------------------------------------------------------------------------
+-> Grid Search (ada): 3 folds estratificados, F1 macro, oversampling de 50%.
+   Melhores hiperparâmetros: {'modelo__learning_rate': 1.0, 'modelo__n_estimators': 150}
+   F1 macro médio na validação: 0.453074
+
+================================================================================
+AVALIAÇÃO DO MODELO: ADABOOST CLASSIFIER
+================================================================================
+• Tempo de treinamento: 255.29 s
+• Acurácia Pura (Global):       76.51%  (Métrica enganosa sob desbalanceamento)
+• Acurácia Balanceada:          47.02%  (Média do Recall de cada classe)
+• Macro F1-Score:               0.4563   (Média harmônica não-ponderada)
+• Weighted F1-Score:            0.7790
+• Macro Recall (Sensibilidade): 47.02%
+• Macro Precision:              44.95%
+--------------------------------------------------------------------------------
+
+1. RELATÓRIO DE CLASSIFICAÇÃO DETALHADO POR CLASSE (Classification Report):
+               precision  recall  f1-score     support
+Não Diabético     0.8912  0.8422    0.8660 43,880.0000
+Pré-diabético     0.0577  0.1096    0.0756  1,341.0000
+Diabético         0.3997  0.4588    0.4272  8,174.0000
+accuracy          0.7651  0.7651    0.7651      0.7651
+macro avg         0.4495  0.4702    0.4563 53,395.0000
+weighted avg      0.7950  0.7651    0.7790 53,395.0000
+--------------------------------------------------------------------------------
+
+2. MATRIZ DE CONFUSÃO (Contagens e Recall Normalizado por Linha):
+-------------------------------------------------------------------------------
+Classe Real     | Pred: Não Diab | Pred: Pré-diab | Pred: Diabétic | Total Real
+-------------------------------------------------------------------------------
+Não Diabético   | 36,955 (84.2%) |  1,677 ( 3.8%) |  5,248 (12.0%) |   43,880
+Pré-diabético   |    809 (60.3%) |    147 (11.0%) |    385 (28.7%) |    1,341
+Diabético       |  3,702 (45.3%) |    722 ( 8.8%) |  3,750 (45.9%) |    8,174
+-------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+3. IMPORTÂNCIA DAS VARIÁVEIS PREDITORAS (redução de impureza):
+            Atributo  Importância Relativa (%)  Impacto Cumulativo (%)
+                 Age                   19.0000                 19.0000
+              HighBP                   17.4400                 36.4400
+             GenHlth                   15.9100                 52.3500
+                 BMI                   14.1500                 66.4900
+           CholCheck                    9.8800                 76.3700
+            HighChol                    6.1900                 82.5700
+              Income                    3.8000                 86.3700
+HeartDiseaseorAttack                    2.7900                 89.1600
+         NoDocbcCost                    2.3400                 91.4900
+            MentHlth                    1.9800                 93.4700
+           Education                    1.8000                 95.2700
+            DiffWalk                    1.7300                 97.0000
+        PhysActivity                    1.7100                 98.7100
+              Stroke                    0.7200                 99.4200
+       HasHealthcare                    0.5800                100.0000
+              Smoker                    0.0000                100.0000
+                 Sex                    0.0000                100.0000
+            PhysHlth                    0.0000                100.0000
+--------------------------------------------------------------------------------
+
+================================================================================
+QUADRO COMPARATIVO CONSOLIDADO DE MODELOS MULTICLASSE
+================================================================================
+                  Modelo  Tempo (s)  Acurácia Global (%)  Acurácia Balanceada (%)  Macro F1  Weighted F1  Recall Pré-diabético (%)  Recall Diabético (%)  Recall Não Diabético (%)
+Decision Tree Classifier    25.3786              73.1716                  47.3693    0.4448       0.7570                   10.8128               52.3367                   78.9585
+Random Forest Classifier   197.5242              77.6664                  46.6581    0.4563       0.7843                    6.0403               48.6787                   85.2552
+     AdaBoost Classifier   255.2918              76.5090                  47.0192    0.4563       0.7790                   10.9620               45.8772                   84.2183
+================================================================================
+
+################################################################################
+   PIPELINE DE MODELAGEM PREDITIVA CONCLUÍDO COM SUCESSO!
+################################################################################

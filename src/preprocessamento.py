@@ -353,6 +353,29 @@ def processar_preditoras(
             "Retenção (%)": (linhas_correntes / passos_funil[0]["Registros Restantes"]) * 100
         })
 
+    # Mantém a política de excluir respostas inválidas e audita cada perda.
+    dias_validos = {dia: dia for dia in range(1, 31)}
+    dias_validos[88] = 0
+    atributos_adicionais = {
+        "MentHlth": ("MENTHLTH", dias_validos),
+        "PhysHlth": ("PHYSHLTH", dias_validos),
+        "HasHealthcare": ("PRIMINS1", {**dict.fromkeys(range(1, 11), 1), 88: 0}),
+        "NoDocbcCost": ("MEDCOST1", {1: 1, 2: 0}),
+        "CholCheck": ("_CHOLCH3", {1: 1, 2: 0, 3: 0}),
+    }
+    for destino, (origem, codigos) in atributos_adicionais.items():
+        valores = df_clean[origem].map(codigos)
+        validos = valores.notna()
+        perda = len(df_clean) - validos.sum()
+        df_clean = df_clean.loc[validos].copy()
+        df_clean[destino] = valores.loc[validos].astype(int)
+        passos_funil.append({
+            "Etapa / Filtro": f"{destino} ({origem})",
+            "Registros Restantes": len(df_clean),
+            "Perda Absoluta": perda,
+            "Retenção (%)": len(df_clean) / passos_funil[0]["Registros Restantes"] * 100
+        })
+
     # Seleção final e ordenação lógica das colunas tratadas
     colunas_finais = [
         # Variáveis-Alvo
@@ -375,6 +398,7 @@ def processar_preditoras(
     ]
     if incluir_socioeconomicos:
         colunas_finais.extend(["Education", "Income"])
+    colunas_finais.extend(atributos_adicionais)
 
     df_final = df_clean[colunas_finais].copy()
     funil_df = pd.DataFrame(passos_funil)
